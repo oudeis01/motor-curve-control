@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Motor Curve Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #timeScale {
+            width: 300px;
+            margin: 20px;
+        }
+        .container {
+            padding: 20px;
+        }
+        button {
+            padding: 10px;
+            margin: 10px;
+        }
+        canvas#myChart {
+            width: 600px;
+            height: 400px;
+            max-height: 400px;
+        }
+        .control-section {
+            margin: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f5f5f5;
+        }
+        .control-group {
+            margin: 15px 0;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        input[type="number"] {
+            width: 80px;
+            margin-right: 15px;
+            padding: 5px;
+        }
+        #saveMsg {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="myChart"></canvas>
+        <div class="control-section">
+            <div class="control-group">
+                <label>Time Scale: </label>
+                <input type="range" id="timeScale" min="1" max="10" value="1" step="0.1">
+                <span id="scaleValue">1x</span>
+            </div>
+            
+            <div class="control-group">
+                <button onclick="generateCode()">Generate Arduino Code</button>
+                <button onclick="resetChart()">Reset Chart</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Sine Wave Generator</h3>
+                <label>Amplitude (%): </label>
+                <input type="number" id="sineAmplitude" min="0" max="100" value="50">
+                <label>Frequency (Hz): </label>
+                <input type="number" id="sineFrequency" min="0.1" max="10" step="0.1" value="1">
+                <br>
+                <label>
+                    <input type="checkbox" id="appendWave"> Append to last point
+                </label>
+                <button onclick="generateSineWave()">Generate Sine Wave</button>
+            </div>
+        </div>
+    </div>
+    <div id="saveMsg"></div>
+    <script>
+        let dataPoints = [];
+        let timeScale = 1;
+        let chart;
+        let isDrawing = false;
+        let lastPoint = null;
+        let selectedPointIndex = -1;
+        let colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+
+        function initChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Motor Speed',
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        data: [],
+                        pointRadius: 5,
+                        pointBackgroundColor: [],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Time (seconds)' },
+                            min: 0,
+                            max: 1 * timeScale,  // Default time span is 1 second
+                            ticks: { stepSize: 0.1, maxTicksLimit: 20 }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: { display: true, text: 'Speed (%)' },
+                            min: 0,
+                            max: 100,
+                            ticks: { stepSize: 10, beginAtZero: true }
+                        }
+                    },
+                    plugins: { tooltip: { enabled: false } }
+                }
+            });
+            chart.options.animation = false; // disables all animations
+
+            // Event listeners
+            const canvasEl = chart.canvas;
+            canvasEl.addEventListener('dblclick', handleDoubleClick);
+            canvasEl.addEventListener('mousedown', handleMouseDown);
+            canvasEl.addEventListener('mousemove', handleMouseMove);
+            canvasEl.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function updatePointColors() {
+            chart.data.datasets[0].pointBackgroundColor = dataPoints.map((_, i) => 
+                colors[i % colors.length]
+            );
+        }
+
+        function handleMouseDown(e) {
+            const point = getChartPoint(e);
+            if (!point) return;
+
+            selectedPointIndex = findNearestPointIndex(point);
+            if (selectedPointIndex >= 0) {
+                isDrawing = false;
+                return;
+            }
+
+            isDrawing = true;
+            addDataPoint(point);
+        }
+
+        function handleMouseMove(e) {
+            if (!isDrawing && selectedPointIndex === -1) return;
+            
+            const point = getChartPoint(e);
+            if (!point) return;
+
+            if (selectedPointIndex >= 0) {
+                const prevX = dataPoints[selectedPointIndex-1]?.x || 0;
+                const nextX = dataPoints[selectedPointIndex+1]?.x || Infinity;
+                if (point.x > prevX && point.x < nextX) {
+                    dataPoints[selectedPointIndex] = point;
+                    updateChart();
+                }
+            } else if (isDrawing) {
+                addDataPoint(point);
+            }
+        }
+
+        function handleMouseUp() {
+            isDrawing = false;
+            selectedPointIndex = -1;
+        }
+
+        function handleDoubleClick(e) {
+            const point = getChartPoint(e);
+            if (!point) return;
+            
+            const index = findNearestPointIndex(point);
+            if (index >= 0) {
+                dataPoints.splice(index, 1);
+                updateChart();
+            }
+        }
+
+        function addDataPoint(point) {
+            const maxX = dataPoints.length > 0 ? Math.max(...dataPoints.map(p => p.x)) : 0;
+            if (point.x > maxX) {
+                dataPoints.push(point);
+                updateChart();
+            }
+        }
+
+        function findNearestPointIndex(targetPoint) {
+            let minDistance = Infinity;
+            let foundIndex = -1;
+            
+            dataPoints.forEach((p, i) => {
+                const dx = p.x - targetPoint.x;
+                const dy = p.y - targetPoint.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 15 && distance < minDistance) {
+                    minDistance = distance;
+                    foundIndex = i;
+                }
+            });
+            
+            return foundIndex;
+        }
+
+        function updateChart() {
+            chart.data.datasets[0].data = dataPoints;
+            updatePointColors();
+            chart.update();
+        }
+
+        // Generate a sine wave and add points to the chart.
+        function generateSineWave() {
+            const amplitude = parseFloat(document.getElementById('sineAmplitude').value);
+            const frequency = parseFloat(document.getElementById('sineFrequency').value);
+            const append = document.getElementById('appendWave').checked;
+            
+            const startX = append && dataPoints.length > 0 
+                ? dataPoints[dataPoints.length - 1].x 
+                : 0;
+            const duration = 1 * timeScale - startX; // 1 second base duration multiplied by timeScale
+            const points = [];
+            for(let t = 0; t <= duration; t += 0.1) {
+                const x = startX + t;
+                const y = 50 + amplitude * Math.sin(2 * Math.PI * frequency * t);
+                points.push({x, y: Math.max(0, Math.min(y, 100))});
+            }
+            
+            dataPoints = dataPoints.filter(p => p.x < startX).concat(points);
+            updateChart();
+        }
+
+        // Convert mouse event to a chart point.
+        function getChartPoint(e) {
+            if (e.offsetX < chart.chartArea.left || e.offsetX > chart.chartArea.right ||
+                e.offsetY < chart.chartArea.top || e.offsetY > chart.chartArea.bottom) {
+                return null;
+            }
+
+            const xValue = chart.scales.x.getValueForPixel(e.offsetX);
+            const yValue = chart.scales.y.getValueForPixel(e.offsetY);
+            const computedPoint = {
+                x: Math.max(0, Math.min(xValue, chart.scales.x.max)),
+                y: Math.max(0, Math.min(yValue, 100))
+            };
+
+            const maxExistingX = dataPoints.length > 0 
+                ? Math.max(...dataPoints.map(p => p.x)) 
+                : -Infinity;
+
+            if (computedPoint.x <= maxExistingX) return null;
+            return computedPoint;
+        }
+
+        function resetChart() {
+            dataPoints = [];
+            selectedPointIndex = -1;
+            chart.data.datasets[0].data = [];
+            updatePointColors();
+            chart.update();
+        }
+
+        document.getElementById('timeScale').addEventListener('input', (e) => {
+            timeScale = parseFloat(e.target.value);
+            document.getElementById('scaleValue').textContent = `${timeScale}x`;
+            chart.options.scales.x.max = 1 * timeScale; // Change time span according to timeScale
+            chart.update();
+        });
+
+        // Generate Arduino code based on the current curve.
+        async function generateCode() {
+            const samples = sampleCurve();
+            const code = `#include <Arduino.h>
+
+const uint16_t SPEED_CURVE[] = {${samples.join(',')}};
+const uint16_t CURVE_LENGTH = ${samples.length};
+const uint32_t TOTAL_DURATION = ${1 * timeScale * 1000}UL;
+
+void setup() {
+  pinMode(10, OUTPUT);
+  TCCR1A = _BV(COM1A1) | _BV(WGM10);
+  TCCR1B = _BV(CS10);
+}
+
+void loop() {
+  uint32_t elapsed = millis() % TOTAL_DURATION;
+  uint16_t index = (elapsed * CURVE_LENGTH) / TOTAL_DURATION;
+  analogWrite(10, SPEED_CURVE[index]);
+}`;
+            const fileName = await window.electronAPI.saveCode(code);
+            showSaveMessage(fileName);
+        }
+
+        // Sample the curve by interpolating between data points.
+        function sampleCurve() {
+            const duration = 1 * timeScale;
+            const samples = [];
+            const step = 0.05;
+            dataPoints.sort((a, b) => a.x - b.x);
+            for (let t = 0; t <= duration; t += step) {
+                let value = 0;
+                for (let i = 1; i < dataPoints.length; i++) {
+                    if (t <= dataPoints[i].x) {
+                        const ratio = (t - dataPoints[i - 1].x) / (dataPoints[i].x - dataPoints[i - 1].x);
+                        value = dataPoints[i - 1].y + (dataPoints[i].y - dataPoints[i - 1].y) * ratio;
+                        break;
+                    }
+                }
+                samples.push(Math.round(value * 2.55));
+            }
+            return samples;
+        }
+
+        function showSaveMessage(fileName) {
+            const msgDiv = document.getElementById('saveMsg');
+            msgDiv.textContent = `Generated: ${fileName}`;
+            msgDiv.style.display = 'block';
+            setTimeout(() => { msgDiv.style.display = 'none'; }, 1000);
+        }
+
+        window.onload = initChart;
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "name": "motor-curve-generator",
+  "version": "1.0.0",
+  "main": "main.js",
+  "author": "Your Name <your.email@example.com>",
+  "description": "Motor Curve Generation Tool",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac --x64",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder -mwl"
+  },
+  "build": {
+    "appId": "com.example.motorgenerator",
+    "productName": "Motor Curve Generator",
+    "directories": {
+      "output": "dist"
+    },
+    "files": ["**/*"],
+    "mac": {
+      "target": "dmg",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": true
+    },
+    "linux": {
+      "target": ["deb", "rpm", "AppImage"],
+      "category": "Development"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "dependencies": {
+    "chart.js": "^4.4.8"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.6.3"
+  }
+}

@@ -1,9 +1,3 @@
-name: Build and Release
-on:
-  push:
-    tags:
-      - 'v*'
-
 jobs:
   build:
     strategy:
@@ -18,38 +12,41 @@ jobs:
         with:
           node-version: 20
 
+      # Add platform-specific ffmpeg installation
       - name: Install Dependencies
-        run: npm ci
-
-      - name: Platform-Specific Setup
-        shell: bash
         run: |
-          # For Windows build on Linux (requires Wine)
-          if [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
+          if [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
+            brew install ffmpeg
+          elif [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
             sudo apt-get update
-            sudo apt-get install -y wine
+            sudo apt-get install -y ffmpeg wine
+          elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
+            choco install ffmpeg
           fi
 
+      - name: Install NPM Dependencies
+        run: npm ci
+
       - name: Build for Platform
-        shell: bash
         run: |
           case "${{ matrix.os }}" in
             macos-latest)
+              chmod +x make_icon.sh
               npm run build:mac
               ;;
             windows-latest)
               npm run build:win
               ;;
             ubuntu-latest)
+              chmod +x make_icon.sh
               npm run build:linux
               ;;
           esac
 
-      - name: Upload Artifacts
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/**/*.dmg
             dist/**/*.AppImage
             dist/**/*.exe
-          tag_name: ${{ github.ref_name }}

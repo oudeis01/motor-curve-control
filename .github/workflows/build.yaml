@@ -1,0 +1,55 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Platform-Specific Setup
+        shell: bash
+        run: |
+          # For Windows build on Linux (requires Wine)
+          if [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
+            sudo apt-get update
+            sudo apt-get install -y wine
+          fi
+
+      - name: Build for Platform
+        shell: bash
+        run: |
+          case "${{ matrix.os }}" in
+            macos-latest)
+              npm run build:mac
+              ;;
+            windows-latest)
+              npm run build:win
+              ;;
+            ubuntu-latest)
+              npm run build:linux
+              ;;
+          esac
+
+      - name: Upload Artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/**/*.dmg
+            dist/**/*.AppImage
+            dist/**/*.exe
+          tag_name: ${{ github.ref_name }}

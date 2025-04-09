@@ -21,6 +21,9 @@
       "main.js",
       "preload.js",
       "index.html",
+      "css/**",
+      "js/**",
+      "partials/**",
       "build/icons/**",
       "!**/node_modules/electron/{dist,out}/**",
       "!**/node_modules/{@types,@electron}/**"

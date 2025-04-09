@@ -1,40 +1,82 @@
 {
   "name": "motor-curve-generator",
   "version": "1.0.0",
+  "description": "Motor Curve Generator Application",
+  "author": "Choi Haram <altitudinem@gmail.com>",
+  "homepage": "",
   "main": "main.js",
-  "author": "Your Name <your.email@example.com>",
-  "description": "Motor Curve Generation Tool",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-builder --mac --x64",
-    "build:linux": "electron-builder --linux",
-    "build:win": "electron-builder --win",
-    "build:all": "electron-builder -mwl"
+    "dev": "NODE_ENV=development electron . --enable-logging",
+    "build:mac": "./make_icon.sh && node authoring.js && electron-builder --mac",
+    "build:linux": "./make_icon.sh && node authoring.js && electron-builder --linux",
+    "build:win": "./make_icon.sh && node authoring.js && electron-builder --win",
+    "build:all": "./make_icon.sh && node authoring.js && electron-builder -mwl"
   },
   "build": {
-    "appId": "com.example.motorgenerator",
+    "appId": "com.choiharam.motorgenerator",
     "productName": "Motor Curve Generator",
+    "copyright": "Copyright © 2025 Choi Haram",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "build/icons/**",
+      "!**/node_modules/electron/{dist,out}/**",
+      "!**/node_modules/{@types,@electron}/**"
+    ],
     "directories": {
       "output": "dist"
     },
-    "files": ["**/*"],
     "mac": {
       "target": "dmg",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "hardenedRuntime": true
+      "icon": "build/icons/1024x1024.png",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     },
     "linux": {
-      "target": ["deb", "rpm", "AppImage"],
-      "category": "Development"
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icons/1024x1024.png",
+      "category": "Development",
+      "maintainer": "Choi Haram <altitudinem@gmail.com>"
     },
     "win": {
-      "target": "nsis"
-    }
+      "target": "nsis",
+      "icon": "build/icons/1024x1024.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": ".",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node",
+      "!**/devDependencies/**",
+      "!**/test/**",
+      "!**/docs/**"
+    ],
+    "compression": "maximum"
   },
   "dependencies": {
     "chart.js": "^4.4.8"
   },
   "devDependencies": {
-    "electron-builder": "^24.6.3"
+    "electron": "^28.1.0",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2"
   }
 }

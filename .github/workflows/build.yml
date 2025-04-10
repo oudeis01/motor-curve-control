@@ -1,57 +1,83 @@
-name: Build and Release
+name: Build
+
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+  pull_request:
+
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
+    runs-on: macos-14-arm64
+    env:
+      FFMEPG_INSTALL_DIR: ${{ runner.temp }}/ffmpeg
+      # Adjust the FFmpeg version and URL as needed:
+      FFMPEG_VERSION: "7.1.1_1"
+      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n${FFMPEG_VERSION}/ffmpeg-macos.tar.gz"
 
+    steps:
+      # Checkout the code as usual.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: oudeis01/motor-curve-control
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-strict: true
+          persist-credentials: true
+          clean: true
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+          fetch-tags: false
+          show-progress: true
+          lfs: false
+          submodules: false
+          set-safe-directory: true
+
+      # Setup Node.js environment.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          always-auth: false
+          check-latest: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Add platform-specific ffmpeg installation
-      - name: Install Dependencies
-        run: |
-          if [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
-            brew install ffmpeg
-          elif [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg wine
-          elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
-            choco install ffmpeg
-          fi
-
-      - name: Install NPM Dependencies
-        run: npm ci
-
-      - name: Build for Platform
-        run: |
-          case "${{ matrix.os }}" in
-            macos-latest)
-              chmod +x make_icon.sh
-              npm run build:mac
-              ;;
-            windows-latest)
-              npm run build:win
-              ;;
-            ubuntu-latest)
-              chmod +x make_icon.sh
-              npm run build:linux
-              ;;
-          esac
-
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+      # Cache pre-compiled FFmpeg binary.
+      - name: Cache FFmpeg binary
+        id: cache-ffmpeg
+        uses: actions/cache@v3
         with:
-          files: |
-            dist/**/*.dmg
-            dist/**/*.AppImage
-            dist/**/*.exe
+          # This cache uses the runner’s temporary directory to store FFmpeg.
+          path: ${{ env.FFMEPG_INSTALL_DIR }}
+          # Cache key can include OS name and FFMPEG_VERSION so that updated versions invalidate the cache.
+          key: ${{ runner.os }}-ffmpeg-${{ env.FFMPEG_VERSION }}
+
+      # Download pre-compiled FFmpeg binary if no cache hit.
+      - name: Download and extract FFmpeg pre-compiled binary
+        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
+        run: |
+          echo "No cache hit, downloading FFmpeg..."
+          mkdir -p "${{ env.FFMEPG_INSTALL_DIR }}"
+          curl -L "${FFMPEG_URL}" -o ffmpeg.tar.gz
+          tar -xzf ffmpeg.tar.gz -C "${{ env.FFMEPG_INSTALL_DIR }}"
+          rm ffmpeg.tar.gz
+        shell: bash
+
+      # Add the downloaded FFmpeg binary to the PATH.
+      - name: Add FFmpeg to PATH
+        run: |
+          echo "${{ env.FFMEPG_INSTALL_DIR }}/bin" >> $GITHUB_PATH
+
+      # Install other dependencies based on the runner OS.
+      - name: Install Other Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Although we have downloaded FFmpeg already, install other dependencies via brew.
+          brew update
+          brew install highway imath libdeflate openexr webp jpeg-xl libvmaf aom aribb24 dav1d frei0r lame fribidi libunibreak libass libbluray cjson libmicrohttpd mbedtls librist libsoxr libssh libvidstab libogg libvorbis libvpx opencore-amr openjpeg opus rav1e libsamplerate flac mpg123 libsndfile rubberband sdl2 snappy speex srt svt-av1 leptonica libb2 libarchive pango tesseract theora x264 x265 xvid zeromq zimg
+
+      # Build steps for the project.
+      - name: Install project dependencies and build
+        run: |
+          yarn install
+          yarn build

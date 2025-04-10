@@ -1,4 +1,4 @@
-name: Build
+name: Electron Build and Release
 
 on:
   push:
@@ -7,16 +7,16 @@ on:
   pull_request:
 
 jobs:
-  build:
-    runs-on: macos-14-arm64
+  build-release:
+    runs-on: macos-latest
     env:
-      FFMEPG_INSTALL_DIR: ${{ runner.temp }}/ffmpeg
-      # Adjust the FFmpeg version and URL as needed:
+      # Use a directory within $HOME for caching the FFmpeg binary
+      FFMPEG_INSTALL_DIR: $HOME/.cache/ffmpeg
+      # Set the FFmpeg version and adjust URL as needed
       FFMPEG_VERSION: "7.1.1_1"
-      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n${FFMPEG_VERSION}/ffmpeg-macos.tar.gz"
-
+      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n${{ env.FFMPEG_VERSION }}/ffmpeg-macos.tar.gz"
     steps:
-      # Checkout the code as usual.
+      # 1. Checkout your repository using all the options you were using
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -33,7 +33,7 @@ jobs:
           submodules: false
           set-safe-directory: true
 
-      # Setup Node.js environment.
+      # 2. Setup Node.js (version 20)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -42,42 +42,56 @@ jobs:
           check-latest: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Cache pre-compiled FFmpeg binary.
+      # 3. Cache precompiled FFmpeg binary to speed up subsequent builds.
       - name: Cache FFmpeg binary
         id: cache-ffmpeg
         uses: actions/cache@v3
         with:
-          # This cache uses the runner’s temporary directory to store FFmpeg.
-          path: ${{ env.FFMEPG_INSTALL_DIR }}
-          # Cache key can include OS name and FFMPEG_VERSION so that updated versions invalidate the cache.
+          path: ${{ env.FFMPEG_INSTALL_DIR }}
           key: ${{ runner.os }}-ffmpeg-${{ env.FFMPEG_VERSION }}
 
-      # Download pre-compiled FFmpeg binary if no cache hit.
+      # 4. Download and extract FFmpeg if no cache exists.
       - name: Download and extract FFmpeg pre-compiled binary
         if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         run: |
           echo "No cache hit, downloading FFmpeg..."
-          mkdir -p "${{ env.FFMEPG_INSTALL_DIR }}"
+          mkdir -p "${FFMPEG_INSTALL_DIR}"
           curl -L "${FFMPEG_URL}" -o ffmpeg.tar.gz
-          tar -xzf ffmpeg.tar.gz -C "${{ env.FFMEPG_INSTALL_DIR }}"
+          tar -xzf ffmpeg.tar.gz -C "${FFMPEG_INSTALL_DIR}"
           rm ffmpeg.tar.gz
         shell: bash
 
-      # Add the downloaded FFmpeg binary to the PATH.
+      # 5. Add FFmpeg binary folder to PATH so it is available during the build.
       - name: Add FFmpeg to PATH
-        run: |
-          echo "${{ env.FFMEPG_INSTALL_DIR }}/bin" >> $GITHUB_PATH
+        run: echo "${FFMPEG_INSTALL_DIR}/bin" >> $GITHUB_PATH
 
-      # Install other dependencies based on the runner OS.
-      - name: Install Other Dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          # Although we have downloaded FFmpeg already, install other dependencies via brew.
-          brew update
-          brew install highway imath libdeflate openexr webp jpeg-xl libvmaf aom aribb24 dav1d frei0r lame fribidi libunibreak libass libbluray cjson libmicrohttpd mbedtls librist libsoxr libssh libvidstab libogg libvorbis libvpx opencore-amr openjpeg opus rav1e libsamplerate flac mpg123 libsndfile rubberband sdl2 snappy speex srt svt-av1 leptonica libb2 libarchive pango tesseract theora x264 x265 xvid zeromq zimg
+      # 6. Install project dependencies.
+      - name: Install Dependencies
+        run: yarn install
 
-      # Build steps for the project.
-      - name: Install project dependencies and build
-        run: |
-          yarn install
-          yarn build
+      # 7. Build the Electron app for all platforms.
+      - name: Build Electron App for All Platforms
+        run: yarn build:all
+
+      # 8. Create a GitHub release based on the version tag.
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 9. Upload release assets from the dist folder.
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

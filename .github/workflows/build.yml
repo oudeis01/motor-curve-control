@@ -10,13 +10,13 @@ jobs:
   build-release:
     runs-on: macos-latest
     env:
-      # Use a directory within $HOME for caching the FFmpeg binary
+      # Use a directory within $HOME for caching the FFmpeg binary.
       FFMPEG_INSTALL_DIR: $HOME/.cache/ffmpeg
-      # Set the FFmpeg version and adjust URL as needed
+      # Set the FFmpeg version and URL.
       FFMPEG_VERSION: "7.1.1_1"
-      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n${{ env.FFMPEG_VERSION }}/ffmpeg-macos.tar.gz"
+      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n7.1.1_1/ffmpeg-macos.tar.gz"
     steps:
-      # 1. Checkout your repository using all the options you were using
+      # 1. Checkout your repository.
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -33,7 +33,7 @@ jobs:
           submodules: false
           set-safe-directory: true
 
-      # 2. Setup Node.js (version 20)
+      # 2. Setup Node.js (version 20).
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -42,7 +42,7 @@ jobs:
           check-latest: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Cache precompiled FFmpeg binary to speed up subsequent builds.
+      # 3. Cache the precompiled FFmpeg binary.
       - name: Cache FFmpeg binary
         id: cache-ffmpeg
         uses: actions/cache@v3
@@ -61,7 +61,7 @@ jobs:
           rm ffmpeg.tar.gz
         shell: bash
 
-      # 5. Add FFmpeg binary folder to PATH so it is available during the build.
+      # 5. Add the downloaded FFmpeg binary to the PATH.
       - name: Add FFmpeg to PATH
         run: echo "${FFMPEG_INSTALL_DIR}/bin" >> $GITHUB_PATH
 
@@ -85,7 +85,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9. Upload release assets from the dist folder.
+      # 9. Upload release assets.
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:

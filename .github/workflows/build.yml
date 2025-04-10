@@ -1,97 +1,57 @@
-name: Electron Build and Release
-
+name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'
-  pull_request:
-
+      - 'v*'
 jobs:
-  build-release:
-    runs-on: macos-latest
-    env:
-      # Use a directory within $HOME for caching the FFmpeg binary.
-      FFMPEG_INSTALL_DIR: $HOME/.cache/ffmpeg
-      # Set the FFmpeg version and URL.
-      FFMPEG_VERSION: "7.1.1_1"
-      FFMPEG_URL: "https://github.com/FFmpeg/FFmpeg/releases/download/n7.1.1_1/ffmpeg-macos.tar.gz"
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      # 1. Checkout your repository.
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          repository: oudeis01/motor-curve-control
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ssh-strict: true
-          persist-credentials: true
-          clean: true
-          sparse-checkout-cone-mode: true
-          fetch-depth: 1
-          fetch-tags: false
-          show-progress: true
-          lfs: false
-          submodules: false
-          set-safe-directory: true
+      - uses: actions/checkout@v4
 
-      # 2. Setup Node.js (version 20).
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          always-auth: false
-          check-latest: false
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Cache the precompiled FFmpeg binary.
-      - name: Cache FFmpeg binary
-        id: cache-ffmpeg
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.FFMPEG_INSTALL_DIR }}
-          key: ${{ runner.os }}-ffmpeg-${{ env.FFMPEG_VERSION }}
+      # # Add platform-specific ffmpeg installation
+      # - name: Install Dependencies
+      #   run: |
+      #     if [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
+      #       brew install ffmpeg
+      #     elif [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
+      #       sudo apt-get update
+      #       sudo apt-get install -y ffmpeg wine
+      #     elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
+      #       choco install ffmpeg
+      #     fi
 
-      # 4. Download and extract FFmpeg if no cache exists.
-      - name: Download and extract FFmpeg pre-compiled binary
-        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Build for Platform
         run: |
-          echo "No cache hit, downloading FFmpeg..."
-          mkdir -p "${FFMPEG_INSTALL_DIR}"
-          curl -L "${FFMPEG_URL}" -o ffmpeg.tar.gz
-          tar -xzf ffmpeg.tar.gz -C "${FFMPEG_INSTALL_DIR}"
-          rm ffmpeg.tar.gz
-        shell: bash
+          case "${{ matrix.os }}" in
+            macos-latest)
+              chmod +x make_icon.sh
+              npm run build:mac
+              ;;
+            windows-latest)
+              npm run build:win
+              ;;
+            ubuntu-latest)
+              chmod +x make_icon.sh
+              npm run build:linux
+              ;;
+          esac
 
-      # 5. Add the downloaded FFmpeg binary to the PATH.
-      - name: Add FFmpeg to PATH
-        run: echo "${FFMPEG_INSTALL_DIR}/bin" >> $GITHUB_PATH
-
-      # 6. Install project dependencies.
-      - name: Install Dependencies
-        run: yarn install
-
-      # 7. Build the Electron app for all platforms.
-      - name: Build Electron App for All Platforms
-        run: yarn build:all
-
-      # 8. Create a GitHub release based on the version tag.
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 9. Upload release assets.
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/*.dmg
-            dist/*.exe
-            dist/*.AppImage
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            dist/**/*.dmg
+            dist/**/*.AppImage
+            dist/**/*.exe

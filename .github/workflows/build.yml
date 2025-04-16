@@ -17,17 +17,17 @@ jobs:
         with:
           node-version: 20
 
-      # Add platform-specific ffmpeg installation
-      - name: Install Dependencies
-        run: |
-          if [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
-            brew install ffmpeg
-          elif [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg wine
-          elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
-            choco install ffmpeg
-          fi
+      # # Add platform-specific ffmpeg installation
+      # - name: Install Dependencies
+      #   run: |
+      #     if [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
+      #       brew install ffmpeg
+      #     elif [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
+      #       sudo apt-get update
+      #       sudo apt-get install -y ffmpeg wine
+      #     elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
+      #       choco install ffmpeg
+      #     fi
 
       - name: Install NPM Dependencies
         run: npm ci

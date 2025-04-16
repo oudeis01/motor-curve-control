@@ -45,7 +45,7 @@ function generateCode() {
   code += `}\n\n`;
 
   code += `void loop() {\n`;
-  code += `  float currentTime = fmod(millis() / 1000.0, TOTAL_DURATION); // Wrap time\n`; // Time-wrapping here
+  code += `  float currentTime = fmod(millis() / 1000.0, TOTAL_DURATION); `;
   code += `  float outputValue = 0.0;\n\n`;
   code += `  for(int i = 0; i < NUM_POINTS - 1; i++) {\n`;
   code += `    if(currentTime >= timePoints[i] && currentTime <= timePoints[i+1]) {\n`;

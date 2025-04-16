@@ -8,10 +8,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "NODE_ENV=development electron . --enable-logging",
-    "build:mac": "./make_icon.sh && node authoring.js && electron-builder --mac",
-    "build:linux": "./make_icon.sh && node authoring.js && electron-builder --linux",
-    "build:win": "./make_icon.sh && node authoring.js && electron-builder --win",
-    "build:all": "./make_icon.sh && node authoring.js && electron-builder -mwl"
+    "build:mac": "node authoring.js && electron-builder --mac",
+    "build:linux": "node authoring.js && electron-builder --linux",
+    "build:win": "node authoring.js && electron-builder --win",
+    "build:all": "node authoring.js && electron-builder -mwl"
   },
   "build": {
     "appId": "com.choiharam.motorgenerator",

@@ -38,9 +38,10 @@ function generateCode() {
   code += `const float TOTAL_DURATION = ${totalDuration.toFixed(2)}; // Total curve duration\n\n`; // Add total duration
 
   code += `void setup() {\n`;
-  code += `  pinMode(10, OUTPUT);\n`;
-  code += `  TCCR1A = _BV(COM1A1) | _BV(WGM10);\n`;
-  code += `  TCCR1B = _BV(CS10);\n`;
+  // disable AVR macros override
+  // code += `  pinMode(10, OUTPUT);\n`;
+  // code += `  TCCR1A = _BV(COM1A1) | _BV(WGM10);\n`;
+  // code += `  TCCR1B = _BV(CS10);\n`;
   code += `}\n\n`;
 
   code += `void loop() {\n`;

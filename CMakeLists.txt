@@ -102,6 +102,32 @@ if(NOT imgui_filedialog_POPULATED)
     FetchContent_Populate(imgui_filedialog)
 endif()
 
+# Configure imgui with integrated file dialog
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${imgui_filedialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+)
+
+target_include_directories(imgui PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+    ${glfw_SOURCE_DIR}/include
+    ${imgui_filedialog_SOURCE_DIR}
+)
+
+if(APPLE)
+    find_library(COCOA_LIBRARY Cocoa)
+    find_library(OPENGL_LIBRARY OpenGL)
+    find_library(IOKIT_LIBRARY IOKit)
+    target_link_libraries(imgui PRIVATE ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${IOKIT_LIBRARY})
+endif()
+
 find_package(OpenGL REQUIRED)
 if(UNIX AND NOT APPLE)
     find_library(X11_LIBRARIES X11)

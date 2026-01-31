@@ -1,5 +1,22 @@
-node_modules
-dist
-build
+# C++ Build outputs
+build/
+build-linux/
+build-win/
+bin/
+
+# Large font headers (generated during build)
+NotoSansMonoCJK*-Regular.h
+font_data.h
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
 .DS_Store
-MotorCurveGenerator_Output
+Thumbs.db
+
+# Generated Arduino code
+*.ino

@@ -95,32 +95,11 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(glfw imgui imgui_filedialog)
+FetchContent_MakeAvailable(glfw imgui)
 
-# Configure imgui with integrated file dialog
-add_library(imgui STATIC
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_demo.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    ${imgui_filedialog_SOURCE_DIR}/ImGuiFileDialog.cpp
-)
-
-target_include_directories(imgui PUBLIC
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-    ${glfw_SOURCE_DIR}/include
-    ${imgui_filedialog_SOURCE_DIR}
-)
-
-if(APPLE)
-    find_library(COCOA_LIBRARY Cocoa)
-    find_library(OPENGL_LIBRARY OpenGL)
-    find_library(IOKIT_LIBRARY IOKit)
-    target_link_libraries(imgui PRIVATE ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${IOKIT_LIBRARY})
+FetchContent_GetProperties(imgui_filedialog)
+if(NOT imgui_filedialog_POPULATED)
+    FetchContent_Populate(imgui_filedialog)
 endif()
 
 find_package(OpenGL REQUIRED)

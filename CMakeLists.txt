@@ -83,17 +83,19 @@ FetchContent_Declare(
     GIT_TAG v1.89.7
 )
 
+# ImGuiFileDialog
+FetchContent_Declare(
+    imgui_filedialog
+    GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
+    GIT_TAG v0.6.5
+)
+
 # Disable GLFW examples and tests
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(glfw imgui)
-
-FetchContent_GetProperties(imgui_filedialog)
-if(NOT imgui_filedialog_POPULATED)
-    FetchContent_Populate(imgui_filedialog)
-endif()
+FetchContent_MakeAvailable(glfw imgui imgui_filedialog)
 
 # Configure imgui with integrated file dialog
 add_library(imgui STATIC

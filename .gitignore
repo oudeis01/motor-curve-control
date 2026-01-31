@@ -5,9 +5,9 @@ build-win/
 bin/
 
 # Large font headers (generated during build)
-NotoSansMonoCJK*-Regular.h
+NotoSansMonoCJK*-Regular.*
 font_data.h
-
+.sisyphus
 # IDE files
 .vscode/
 .idea/

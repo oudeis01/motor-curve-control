@@ -33,6 +33,8 @@ struct AppState {
     ImVec2 plotSize;
     ImVec2 plotMin;
     float warningTimer = 0.0f;
+    float successTimer = 0.0f;
+    std::string lastSavedFile;
     float rdpEpsilon = 0.5f;
     
     // Selection system
@@ -391,7 +393,8 @@ void loop() {
 }
 )";
         file.close();
-        state.warningTimer = 2.0f;
+        state.successTimer = 3.0f;
+        state.lastSavedFile = filePath.substr(filePath.find_last_of("/\\") + 1);
     }
 }
 
@@ -433,16 +436,21 @@ int main() {
 
         if (state.warningTimer > 0.0f) {
             state.warningTimer -= io.DeltaTime;
-            if (state.warningTimer <= 0.0f) {
-                state.warningTimer = 0.0f;
-            }
             ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowBgAlpha(0.8f);
-            if (ImGui::Begin("MemoryWarning", nullptr, 
-                ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | 
-                ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), 
-                    "%s", state.i18n[state.currentLang]["memoryWarning"].c_str());
+            if (ImGui::Begin("Warning", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "%s", state.i18n[state.currentLang]["memoryWarning"].c_str());
+                ImGui::End();
+            }
+        }
+
+        if (state.successTimer > 0.0f) {
+            state.successTimer -= io.DeltaTime;
+            ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowBgAlpha(0.8f);
+            if (ImGui::Begin("Success", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "%s %s", 
+                    state.i18n[state.currentLang]["fileGenerated"].c_str(), state.lastSavedFile.c_str());
                 ImGui::End();
             }
         }
@@ -476,6 +484,11 @@ int main() {
         }
 
         drawPlot(state);
+
+        std::vector<DataPoint> simplified;
+        rdpSimplify(state.points, state.rdpEpsilon, simplified);
+        ImGui::Text("Points: %zu (Simplified: %zu / %d)", 
+            state.points.size(), simplified.size(), ARDUINO_MEMORY_LIMIT);
 
         ImGui::SliderFloat(state.i18n[state.currentLang]["timeScale"].c_str(), 
             &state.timeScale, 0.1f, 10.0f, "%.1fx");
